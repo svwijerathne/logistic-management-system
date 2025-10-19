@@ -84,7 +84,8 @@ void cityManagement(char cities[MAX][100], int *cityCount, int postalCode[MAX]) 
         printf("1. Add City\n");
         printf("2. Rename City\n");
         printf("3. Remove City\n");
-        printf("4. Back\n");
+        printf("4. Veiw cities\n");
+        printf("5. Back\n");
         printf("Enter choice: ");
         scanf("%d", &choice);
 
@@ -94,8 +95,10 @@ void cityManagement(char cities[MAX][100], int *cityCount, int postalCode[MAX]) 
             case 3: removeCity(cities, cityCount, postalCode); break;
             case 4:
                 printf("\nCities List:\n");
-                for (int i = 0; i < *cityCount; i++)
-                    printf("%d. %s (Postal Code: %d)\n", i + 1, cities[i], postalCode[i]);
+                printf("Postal code \t\t city \n");
+                for (int i = 0; i < *cityCount; i++){
+                    printf("%-19d %-19s \n", postalCode[i],cities[i] );
+                }
                 break;
             case 5:
                 printf("Returning to main menu...\n");
@@ -103,7 +106,7 @@ void cityManagement(char cities[MAX][100], int *cityCount, int postalCode[MAX]) 
             default:
                 printf("Invalid choice! Try again.\n");
         }
-    } while (choice != 4);
+    } while (choice != 5);
 }
 
 void addCity(char cities[MAX][100], int *cityCount, int postalCode[MAX]) {
