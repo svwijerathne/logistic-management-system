@@ -10,16 +10,17 @@
 #include <math.h>
 #include <string.h>
 
-#define MAX 100
-void cityManagement(char cities[MAX][100],int *cityCount,int postalCode[MAX]);
-void addCity(char cities[MAX][100],int *cityCount,int postalCode[MAX]);
-void renameCity(char cities[MAX][100],int *cityCount,int postalCode[MAX]);
-void removeCity(char cities[MAX][100],int *cityCount,int postalCode[MAX]);
+#define MAX_CITIES 100
+
+void cityManagement(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES]);
+void addCity(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES]);
+void renameCity(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES]);
+void removeCity(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES]);
 
 int main(void) {
-    char cities[MAX][100];
+    char cities[MAX_CITIES][100];
     int cityCount=0;
-    int postalCode[MAX];
+    int postalCode[MAX_CITIES];
     int choice=0;
     
     do{
@@ -77,7 +78,7 @@ int main(void) {
     return 0;
 }
 
-void cityManagement(char cities[MAX][100], int *cityCount, int postalCode[MAX]) {//insert a veiw funtion
+void cityManagement(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES]) {
     int choice;
     do {
         printf("\n--- City Management ---\n");
@@ -109,8 +110,8 @@ void cityManagement(char cities[MAX][100], int *cityCount, int postalCode[MAX]) 
     } while (choice != 5);
 }
 
-void addCity(char cities[MAX][100], int *cityCount, int postalCode[MAX]) {
-    if (*cityCount >= MAX) {
+void addCity(char cities[MAX_CITIES][100], int *cityCount, int postalCode[MAX_CITIES]) {
+    if (*cityCount >= MAX_CITIES) {
         printf("City limit reached!\n");
         return;
     }
@@ -141,7 +142,7 @@ void addCity(char cities[MAX][100], int *cityCount, int postalCode[MAX]) {
     printf("City added successfully.\n");
 }
 
-void renameCity(char cities[MAX][100], int *cityCount, int postalCode[MAX]) {
+void renameCity(char cities[MAX_CITIES][100], int *cityCount, int postalCode[MAX_CITIES]) {
     int code, found = 0;
     printf("Enter postal code to rename: ");
     scanf("%d", &code);
@@ -161,7 +162,7 @@ void renameCity(char cities[MAX][100], int *cityCount, int postalCode[MAX]) {
     }
 }
 
-void removeCity(char cities[MAX][100], int *cityCount, int postalCode[MAX]) {
+void removeCity(char cities[MAX_CITIES][100], int *cityCount, int postalCode[MAX_CITIES]) {
     int code, found = 0;
     printf("Enter postal code to remove: ");
     scanf("%d", &code);
