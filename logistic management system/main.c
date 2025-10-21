@@ -21,6 +21,10 @@ void displayDistanceTable(int cityCount,char cities[MAX_CITIES][100],int distanc
 void inputDistance(int cityCount,char cities[MAX_CITIES][100],int distance[MAX_CITIES][MAX_CITIES],int postalCodes[MAX_CITIES]);
 int findCityIndexByPostal(int code, int cityCount, int postalCodes[MAX_CITIES]);
 
+void deliveryRequestHandling(char cities[MAX_CITIES][100], int cityCount, int postalCodes[MAX_CITIES],int distance[MAX_CITIES][MAX_CITIES]);
+void calculateCost(float distance, float weight, int vehicleType);
+
+
 int main(void) {
     char cities[MAX_CITIES][100];
     int distance[MAX_CITIES][MAX_CITIES];
@@ -31,14 +35,13 @@ int main(void) {
     do{
         printf("1. City Management\n");
         printf("2. Distance Management\n");
-        printf("3. Vehicle Management\n");
-        printf("4. Delivery Request Handling\n");
-        printf("5. Cost, Time, and Fuel Calculations\n");
-        printf("6. Delivery Records\n");
-        printf("7. Finding The Least-Cost Route\n"); //(Least-Distance)
-        printf("8. Performance Reports\n");
-        printf("9. File Handling\n");
-        printf("10.Exit..\n");
+        printf("3. Delivery Request Handling\n");
+        printf("4. Cost, Time, and Fuel Calculations\n");
+        printf("5. Delivery Records\n");
+        printf("6. Finding The Least-Cost Route\n"); //(Least-Distance)
+        printf("7. Performance Reports\n");
+        printf("8. File Handling\n");
+        printf("9.Exit..\n");
         printf("Enter your choice :");
         scanf("%d", &choice);
         
@@ -52,27 +55,25 @@ int main(void) {
                 distanceManagement(distance,cities,cityCount,postalCode);
                 break;
             case 3:
-                //vehicle management
+                //delivery request handling
+                deliveryRequestHandling(cities,cityCount,postalCode,distance);
                 break;
             case 4:
-                //delivery request handling
-                break;
-            case 5:
                 //Cost, Time, and Fuel Calculations
                 break;
-            case 6:
+            case 5:
                 //Delivery records
                 break;
-            case 7:
+            case 6:
                 //finding the Least-Cost route
                 break;
-            case 8:
+            case 7:
                 //performing reports
                 break;
-            case 9:
+            case 8:
                 //file handling
                 break;
-            case 10:
+            case 9:
                 printf("Exiting the program ....\n");
                 return 0;
             default:
@@ -283,7 +284,7 @@ void displayDistanceTable(int cityCount, char cities[MAX_CITIES][100], int dista
     }
 
     printf("\n=========== Distance Table (km) ==================\n");
-    printf("%-15s", "City");
+    printf("%-18s", "City");
     for (int i = 0; i < cityCount; i++)
         printf("%18s", cities[i]);
     printf("\n");
@@ -296,4 +297,67 @@ void displayDistanceTable(int cityCount, char cities[MAX_CITIES][100], int dista
         printf("\n");
     }
     printf("====================================================\n");
+}
+
+void deliveryRequestHandling(char cities[MAX_CITIES][100], int cityCount, int postalCodes[MAX_CITIES],int distance[MAX_CITIES][MAX_CITIES]) {
+    if (cityCount < 2) {
+        printf("Add at least 2 cities first!\n");
+        return;
+    }
+
+    int srcCode, destCode;
+    float weight;
+    int vehicleType;
+
+    printf("Enter source city postal code: ");
+    scanf("%d", &srcCode);
+    printf("Enter destination city postal code: ");
+    scanf("%d", &destCode);
+
+    int srcIndex = findCityIndexByPostal(srcCode, cityCount, postalCodes);
+    int destIndex = findCityIndexByPostal(destCode, cityCount, postalCodes);
+
+    if (srcIndex == -1) {
+        printf("source city postal codes not found!\n");
+        return;
+    }
+    
+    if ( destIndex == -1) {
+        printf("destination city postal codes not found!\n");
+        return;
+    }
+    
+    if (srcIndex == destIndex) {
+        printf("Source and destination cannot be the same!\n");
+        return;
+    }
+
+    if (distance[srcIndex][destIndex] == 0) {
+        printf("Distance between %s and %s not set yet!\n", cities[srcIndex], cities[destIndex]);
+        return;
+    }
+
+    printf("Enter package weight (kg): ");
+    scanf("%f", &weight);
+    printf("Select vehicle type (1=Van, 2=Truck, 3=Lorry): ");
+    scanf("%d", &vehicleType);
+    
+    
+    printf("\n\n====================== Request Report =====================\n");
+    printf("source city           : %s\n",cities[srcIndex]);
+    printf("Destination city      : %s\n",cities[destIndex]);
+    printf("Distance In between   : %d\n",distance[srcIndex][destIndex]);
+    printf("Weight of the package : %f Kg\n",weight);
+    if(vehicleType==1){
+        printf("Vehicle type          : Van\n");
+    }
+    else if(vehicleType==2){
+        printf("Vehicle type          : Truck\n");
+    }
+    else {
+        printf("Vehicle type          : Lorry\n");
+    }
+    
+    printf("\n");
+
 }
