@@ -9,13 +9,13 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-
+#define INF 999999
 #define MAX_CITIES 100
 
-void cityManagement(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES]);
+void cityManagement(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES],int distance[MAX_CITIES][MAX_CITIES]);
 void addCity(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES]);
 void renameCity(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES]);
-void removeCity(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES]);
+void removeCity(char cities[MAX_CITIES][100], int *cityCount, int postalCode[MAX_CITIES], int distance[MAX_CITIES][MAX_CITIES]);
 void distanceManagement(int distance[MAX_CITIES][MAX_CITIES],char cities[MAX_CITIES][100],int cityCount,int postalCodes[MAX_CITIES]);
 void displayDistanceTable(int cityCount,char cities[MAX_CITIES][100],int distance[MAX_CITIES][MAX_CITIES]);
 void inputDistance(int cityCount,char cities[MAX_CITIES][100],int distance[MAX_CITIES][MAX_CITIES],int postalCodes[MAX_CITIES]);
@@ -23,11 +23,25 @@ int findCityIndexByPostal(int code, int cityCount, int postalCodes[MAX_CITIES]);
 
 void deliveryRequestHandling(char cities[MAX_CITIES][100], int cityCount, int postalCodes[MAX_CITIES],int distance[MAX_CITIES][MAX_CITIES]);
 void calculateCost(float distance, float weight, int vehicleType);
+void dfsLeastDistance(int current, int dest, int visited[MAX_CITIES],int cityCount, int distance[MAX_CITIES][MAX_CITIES],int path[], int pathIndex, int *minDist, int bestPath[]);
+int findLeastDistance(int cityCount, int distance[MAX_CITIES][MAX_CITIES], char cities[MAX_CITIES][100],int srcIndex, int destIndex);
+
+
 
 
 int main(void) {
     char cities[MAX_CITIES][100];
     int distance[MAX_CITIES][MAX_CITIES];
+    //to avoid garbage values in distance matrix
+    for (int i = 0; i < MAX_CITIES; i++) {
+        for (int j = 0; j < MAX_CITIES; j++) {
+            if (i == j)
+                distance[i][j] = 0;       // same city
+            else
+                distance[i][j] = INF;     // not connected yet
+        }
+    }
+    
     int cityCount=0;
     int postalCode[MAX_CITIES];
     int choice=0;
@@ -36,19 +50,16 @@ int main(void) {
         printf("1. City Management\n");
         printf("2. Distance Management\n");
         printf("3. Delivery Request Handling\n");
-        printf("4. Cost, Time, and Fuel Calculations\n");
-        printf("5. Delivery Records\n");
-        printf("6. Finding The Least-Cost Route\n"); //(Least-Distance)
-        printf("7. Performance Reports\n");
-        printf("8. File Handling\n");
-        printf("9.Exit..\n");
+        printf("4. Delivery Records\n");
+        printf("5. Performance Reports\n");
+        printf("6.Exit..\n");
         printf("Enter your choice :");
         scanf("%d", &choice);
         
         switch (choice){
             case 1:
                 //city management
-                cityManagement(cities,&cityCount,postalCode);
+                cityManagement(cities,&cityCount,postalCode,distance);
                 break;
             case 2:
                 //distance management
@@ -59,40 +70,31 @@ int main(void) {
                 deliveryRequestHandling(cities,cityCount,postalCode,distance);
                 break;
             case 4:
-                //Cost, Time, and Fuel Calculations
-                break;
-            case 5:
                 //Delivery records
                 break;
-            case 6:
-                //finding the Least-Cost route
-                break;
-            case 7:
+            case 5:
                 //performing reports
                 break;
-            case 8:
-                //file handling
-                break;
-            case 9:
+            case 6:
                 printf("Exiting the program ....\n");
                 return 0;
             default:
                 printf("Invalid choice.. ! \nTry again !\n");
                 
         }
-    }while(choice !=10);
+    }while(choice !=6);
     
     return 0;
 }
 
-void cityManagement(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES]) {
+void cityManagement(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES],int distance[MAX_CITIES][MAX_CITIES]) {
     int choice;
     do {
         printf("\n--- City Management ---\n");
         printf("1. Add City\n");
         printf("2. Rename City\n");
         printf("3. Remove City\n");
-        printf("4. Veiw cities\n");
+        printf("4. View cities\n");
         printf("5. Back\n");
         printf("Enter choice: ");
         scanf("%d", &choice);
@@ -105,7 +107,7 @@ void cityManagement(char cities[MAX_CITIES][100],int *cityCount,int postalCode[M
                 renameCity(cities, cityCount, postalCode);
                 break;
             case 3:
-                removeCity(cities, cityCount, postalCode);
+                removeCity(cities, cityCount, postalCode,distance);
                 break;
             case 4:
                 printf("\nCities List:\n");
@@ -175,18 +177,41 @@ void renameCity(char cities[MAX_CITIES][100], int *cityCount, int postalCode[MAX
     }
 }
 
-void removeCity(char cities[MAX_CITIES][100], int *cityCount, int postalCode[MAX_CITIES]) {
+
+void removeCity(char cities[MAX_CITIES][100], int *cityCount, int postalCode[MAX_CITIES], int distance[MAX_CITIES][MAX_CITIES]) {
     int code, found = 0;
     printf("Enter postal code to remove: ");
     scanf("%d", &code);
 
     for (int i = 0; i < *cityCount; i++) {
         if (postalCode[i] == code) {
-            // Shift arrays left
+            // Shift cities and postal codes left
             for (int j = i; j < *cityCount - 1; j++) {
                 strcpy(cities[j], cities[j + 1]);
                 postalCode[j] = postalCode[j + 1];
             }
+
+            // Shift distance matrix rows up (from row i)
+            for (int r = i; r < *cityCount - 1; r++) {
+                for (int c = 0; c < *cityCount; c++) {
+                    distance[r][c] = distance[r + 1][c];
+                }
+            }
+            // Shift distance matrix columns left (from col i)
+            for (int r = 0; r < *cityCount - 1; r++) {
+                for (int c = i; c < *cityCount - 1; c++) {
+                    distance[r][c] = distance[r][c + 1];
+                }
+            }
+
+            // Clear last row/col
+            int last = *cityCount - 1;
+            for (int k = 0; k < *cityCount; k++) {
+                distance[last][k] = INF;
+                distance[k][last] = INF;
+            }
+            distance[last][last] = 0;
+
             (*cityCount)--;
             printf("City removed successfully.\n");
             found = 1;
@@ -194,7 +219,7 @@ void removeCity(char cities[MAX_CITIES][100], int *cityCount, int postalCode[MAX
         }
     }
 
-    if (found==0){
+    if (!found) {
         printf("Postal code not found!\n");
     }
 }
@@ -267,6 +292,17 @@ void inputDistance(int cityCount, char cities[MAX_CITIES][100], int distance[MAX
         printf("Source and destination cannot be the same city!\n");
         return;
     }
+    //to avoid re-enters a distance for the same two cities
+    if (distance[srcIndex][destIndex] != INF && distance[srcIndex][destIndex] != 0) {
+        printf("Warning: Existing distance between %s and %s is %d km. Overwrite? (1=Yes, 0=No): ",
+               cities[srcIndex], cities[destIndex], distance[srcIndex][destIndex]);
+        int overwrite;
+        printf("Overwrite? (1=Yes, 0=No): ");
+        scanf("%d", &overwrite);
+        if (overwrite==0) {
+            return;
+        }
+    }
 
     int dist;
     printf("Enter distance (km): ");
@@ -292,7 +328,11 @@ void displayDistanceTable(int cityCount, char cities[MAX_CITIES][100], int dista
     for (int i = 0; i < cityCount; i++) {
         printf("%-18s", cities[i]);
         for (int j = 0; j < cityCount; j++) {
-            printf("%18d", distance[i][j]);
+            if (distance[i][j] == INF) {
+                printf("%18s", "-");
+            }else {
+                printf("%18d", distance[i][j]);
+            }
         }
         printf("\n");
     }
@@ -332,11 +372,12 @@ void deliveryRequestHandling(char cities[MAX_CITIES][100], int cityCount, int po
         return;
     }
 
-    if (distance[srcIndex][destIndex] == 0) {
+    if (distance[srcIndex][destIndex] == INF) {
         printf("Distance between %s and %s not set yet!\n", cities[srcIndex], cities[destIndex]);
         return;
     }
-
+    int minumumDistance=findLeastDistance(cityCount,distance,cities,srcIndex,destIndex);
+    
     printf("Enter package weight (kg): ");
     scanf("%f", &weight);
     printf("Select vehicle type (1=Van, 2=Truck, 3=Lorry): ");
@@ -346,7 +387,8 @@ void deliveryRequestHandling(char cities[MAX_CITIES][100], int cityCount, int po
     printf("\n\n====================== Request Report =====================\n");
     printf("source city           : %s\n",cities[srcIndex]);
     printf("Destination city      : %s\n",cities[destIndex]);
-    printf("Distance In between   : %d\n",distance[srcIndex][destIndex]);
+    printf("Direct distance In between   : %d\n",distance[srcIndex][destIndex]);
+    printf("Shorest path distance        :%d\n",minumumDistance);
     printf("Weight of the package : %f Kg\n",weight);
     if(vehicleType==1){
         printf("Vehicle type          : Van\n");
@@ -359,5 +401,122 @@ void deliveryRequestHandling(char cities[MAX_CITIES][100], int cityCount, int po
     }
     
     printf("\n");
+    
+    calculateCost((float)minumumDistance, weight, vehicleType);
+}
 
+void dfsLeastDistance(int current, int dest, int visited[MAX_CITIES],
+                      int cityCount, int distance[MAX_CITIES][MAX_CITIES],
+                      int path[], int pathIndex, int *minDist, int bestPath[]) {
+    visited[current] = 1;
+    path[pathIndex] = current;
+
+    // If destination is reached, compute total distance
+    if (current == dest) {
+        int total = 0;
+        for (int i = 0; i < pathIndex; i++) {
+            total += distance[path[i]][path[i + 1]];
+        }
+        if (total < *minDist) {
+            *minDist = total;
+            for (int i = 0; i <= pathIndex; i++) {
+                bestPath[i] = path[i];
+            }
+            bestPath[pathIndex + 1] = -1; // Mark end of path
+        }
+    } else {
+        // Explore all connected cities
+        for (int i = 0; i < cityCount; i++) {
+            if (!visited[i] && distance[current][i] != INF && distance[current][i] != 0) {
+                dfsLeastDistance(i, dest, visited, cityCount, distance,
+                                 path, pathIndex + 1, minDist, bestPath);
+            }
+        }
+    }
+
+    visited[current] = 0; // Unmark when backtracking
+}
+
+
+int findLeastDistance(int cityCount, int distance[MAX_CITIES][MAX_CITIES], char cities[MAX_CITIES][100],int srcIndex, int destIndex) {
+    int visited[MAX_CITIES] = {0}, path[MAX_CITIES];
+    int bestPath[MAX_CITIES];
+    for (int i = 0; i < MAX_CITIES; i++) bestPath[i] = -1;
+
+    int minDist = INF;
+
+    dfsLeastDistance(srcIndex, destIndex, visited, cityCount, distance, path, 0, &minDist, bestPath);
+
+    if (minDist == INF) {
+        printf("No route found.\n");
+        // if no route found, return direct distance if it exists, else INF
+        if (distance[srcIndex][destIndex] != INF) return distance[srcIndex][destIndex];
+        return minDist;
+    }
+
+    printf("\nShortest route: ");
+    for (int i = 0; bestPath[i] != -1 && i < MAX_CITIES; i++) {
+        printf("%s", cities[bestPath[i]]);
+        if (bestPath[i + 1] != -1) printf(" -> ");
+    }
+    printf("\n");
+    return minDist;
+}
+
+
+
+
+
+void calculateCost(float distance, float weight, int vehicleType) {
+    float ratePerKm, speed, efficiency, capacity;
+
+    switch (vehicleType) {
+        case 1: ratePerKm = 30; speed = 60; efficiency = 12; capacity = 1000; break;
+        case 2: ratePerKm = 40; speed = 50; efficiency = 6; capacity = 5000; break;
+        case 3: ratePerKm = 80; speed = 45; efficiency = 4; capacity = 10000; break;
+        default:
+            printf("Invalid vehicle type!\n");
+            return;
+    }
+
+    if (weight > capacity) {
+        printf("Weight exceeds vehicle capacity! Try a larger vehicle.\n");
+        return;
+    }
+
+    float deliveryCost = distance * ratePerKm * (1 + (weight / 10000));
+    
+    float fuelUsed = distance / efficiency;
+    
+    float fuelCost = fuelUsed * 310;
+    
+    float totalCost = deliveryCost + fuelCost;
+    
+    float profit = deliveryCost * 0.25;
+    
+    float customerCharge = totalCost + profit;
+    
+    float time = distance / speed;
+
+    printf("\n================ DELIVERY ESTIMATION ================\n");
+    printf("Distance: %.2f km\n", distance);
+    if(vehicleType==1){
+        printf("Vehicle type : Van\n");
+    }
+    else if(vehicleType==2){
+        printf("Vehicle type : Truck\n");
+    }
+    else {
+        printf("Vehicle type : Lorry\n");
+    }
+    printf("Weight: %.2f kg\n", weight);
+    printf("-----------------------------------------------------\n");
+    printf("Delivery Cost: %.2f LKR\n", deliveryCost);
+    printf("Fuel Used: %.2f L\n", fuelUsed);
+    printf("Fuel Cost: %.2f LKR\n", fuelCost);
+    printf("Total Operational Cost: %.2f LKR\n", totalCost);
+    printf("Profit: %.2f LKR\n", profit);
+    printf("Customer Charge: %.2f LKR\n", customerCharge);
+    printf("Estimated Time: %.2f hrs\n", time);
+    printf("=====================================================\n");
 }
