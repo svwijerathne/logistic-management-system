@@ -614,7 +614,7 @@ void addDeliveryRecord(int src, int dest, float weight, int vehicle, float dista
     timeArr[deliveryCount] = time;
     deliveryCount++;
 
-    printf("✅ Delivery record saved successfully!\n");
+    printf(" Delivery record saved successfully!\n");
 }
 
 void performanceReports(void) {
