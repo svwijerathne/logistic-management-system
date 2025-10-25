@@ -11,7 +11,19 @@
 #include <string.h>
 #define INF 999999
 #define MAX_CITIES 100
+#define MAX_DELIVERIES 50
+//global variables
+int srcPostal[MAX_DELIVERIES];
+int destPostal[MAX_DELIVERIES];
+float weightArr[MAX_DELIVERIES];
+int vehicleTypeArr[MAX_DELIVERIES];
+float distanceArr[MAX_DELIVERIES];
+float totalCostArr[MAX_DELIVERIES];
+float profitArr[MAX_DELIVERIES];
+float timeArr[MAX_DELIVERIES];
+int deliveryCount = 0;
 
+//funtionn prototypes
 void cityManagement(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES],int distance[MAX_CITIES][MAX_CITIES]);
 void addCity(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES]);
 void renameCity(char cities[MAX_CITIES][100],int *cityCount,int postalCode[MAX_CITIES]);
@@ -22,11 +34,16 @@ void inputDistance(int cityCount,char cities[MAX_CITIES][100],int distance[MAX_C
 int findCityIndexByPostal(int code, int cityCount, int postalCodes[MAX_CITIES]);
 
 void deliveryRequestHandling(char cities[MAX_CITIES][100], int cityCount, int postalCodes[MAX_CITIES],int distance[MAX_CITIES][MAX_CITIES]);
-void calculateCost(float distance, float weight, int vehicleType);
+void calculateCost(float distance, float weight, int vehicleType,float *totalCost,float *profit, float *time);
 void dfsLeastDistance(int current, int dest, int visited[MAX_CITIES],int cityCount, int distance[MAX_CITIES][MAX_CITIES],int path[], int pathIndex, int *minDist, int bestPath[]);
 int findLeastDistance(int cityCount, int distance[MAX_CITIES][MAX_CITIES], char cities[MAX_CITIES][100],int srcIndex, int destIndex);
-
-
+void addDeliveryRecord(int src, int dest, float weight, int vehicle, float distance, float cost, float profit, float time);
+void performanceReports(void);
+      // ---------- FILE HANDLING ----------
+void saveData(char cities[MAX_CITIES][100], int postalCodes[MAX_CITIES],int cityCount, int distance[MAX_CITIES][MAX_CITIES]);
+void loadData(char cities[MAX_CITIES][100], int postalCodes[MAX_CITIES],int *cityCount, int distance[MAX_CITIES][MAX_CITIES]);
+void loadDeliveries(void);
+void saveDeliveries(void) ;
 
 
 int main(void) {
@@ -46,7 +63,12 @@ int main(void) {
     int postalCode[MAX_CITIES];
     int choice=0;
     
+    loadData(cities, postalCode, &cityCount, distance);
+    loadDeliveries();
+    printf("Loaded %d cities and %d deliveries.\n", cityCount, deliveryCount);
+
     do{
+        printf("\n================ LOGISTICS MANAGEMENT SYSTEM ================\n");
         printf("1. City Management\n");
         printf("2. Distance Management\n");
         printf("3. Delivery Request Handling\n");
@@ -55,6 +77,7 @@ int main(void) {
         printf("6.Exit..\n");
         printf("Enter your choice :");
         scanf("%d", &choice);
+        printf("\n");
         
         switch (choice){
             case 1:
@@ -71,12 +94,25 @@ int main(void) {
                 break;
             case 4:
                 //Delivery records
-                break;
+                printf("\n--- Delivery Records ---\n");
+                for (int i = 0; i < deliveryCount; i++) {
+                    printf("Delivery #%d:\n", i + 1);
+                    printf("  From %d to %d\n", srcPostal[i], destPostal[i]);
+                    printf("  Weight: %.2f kg | Vehicle: %d\n", weightArr[i], vehicleTypeArr[i]);
+                    printf("  Distance: %.2f km | Cost: %.2f LKR | Profit: %.2f LKR | Time: %.2f hrs\n\n",distanceArr[i],totalCostArr[i], profitArr[i], timeArr[i]);
+                }
+                    if (deliveryCount == 0)
+                        printf("No delivery records available.\n");
+                    break;
+
             case 5:
                 //performing reports
+                performanceReports();
                 break;
             case 6:
                 printf("Exiting the program ....\n");
+                saveData(cities, postalCode, cityCount, distance);
+                printf("Data saved. Exiting...\n");
                 return 0;
             default:
                 printf("Invalid choice.. ! \nTry again !\n");
@@ -294,10 +330,8 @@ void inputDistance(int cityCount, char cities[MAX_CITIES][100], int distance[MAX
     }
     //to avoid re-enters a distance for the same two cities
     if (distance[srcIndex][destIndex] != INF && distance[srcIndex][destIndex] != 0) {
-        printf("Warning: Existing distance between %s and %s is %d km. Overwrite? (1=Yes, 0=No): ",
-               cities[srcIndex], cities[destIndex], distance[srcIndex][destIndex]);
+        printf("Warning: Existing distance between %s and %s is %d km. Overwrite? (1=Yes, 0=No): ",cities[srcIndex],cities[destIndex], distance[srcIndex][destIndex]);
         int overwrite;
-        printf("Overwrite? (1=Yes, 0=No): ");
         scanf("%d", &overwrite);
         if (overwrite==0) {
             return;
@@ -307,6 +341,11 @@ void inputDistance(int cityCount, char cities[MAX_CITIES][100], int distance[MAX
     int dist;
     printf("Enter distance (km): ");
     scanf("%d", &dist);
+    //validation
+    if (dist <= 0) {
+        printf("Distance must be positive!\n");
+        return;
+    }
 
     distance[srcIndex][destIndex] = dist;
     distance[destIndex][srcIndex] = dist;
@@ -402,7 +441,12 @@ void deliveryRequestHandling(char cities[MAX_CITIES][100], int cityCount, int po
     
     printf("\n");
     
-    calculateCost((float)minumumDistance, weight, vehicleType);
+    
+    float totalCost, profit, time;
+    calculateCost(minumumDistance, weight, vehicleType, &totalCost, &profit, &time);
+    addDeliveryRecord(srcCode, destCode, weight, vehicleType, minumumDistance, totalCost, profit, time);
+    saveDeliveries();
+
 }
 
 void dfsLeastDistance(int current, int dest, int visited[MAX_CITIES],
@@ -467,7 +511,7 @@ int findLeastDistance(int cityCount, int distance[MAX_CITIES][MAX_CITIES], char 
 
 
 
-void calculateCost(float distance, float weight, int vehicleType) {
+void calculateCost(float distance, float weight, int vehicleType,float *totalCost,float *profit, float *time) {
     float ratePerKm, speed, efficiency, capacity;
 
     switch (vehicleType) {
@@ -490,13 +534,13 @@ void calculateCost(float distance, float weight, int vehicleType) {
     
     float fuelCost = fuelUsed * 310;
     
-    float totalCost = deliveryCost + fuelCost;
+    *totalCost = deliveryCost + fuelCost;
     
-    float profit = deliveryCost * 0.25;
+    *profit = deliveryCost * 0.25;
     
-    float customerCharge = totalCost + profit;
+    float customerCharge = *totalCost + *profit;
     
-    float time = distance / speed;
+    *time = distance / speed;
 
     printf("\n================ DELIVERY ESTIMATION ================\n");
     printf("Distance: %.2f km\n", distance);
@@ -514,9 +558,128 @@ void calculateCost(float distance, float weight, int vehicleType) {
     printf("Delivery Cost: %.2f LKR\n", deliveryCost);
     printf("Fuel Used: %.2f L\n", fuelUsed);
     printf("Fuel Cost: %.2f LKR\n", fuelCost);
-    printf("Total Operational Cost: %.2f LKR\n", totalCost);
-    printf("Profit: %.2f LKR\n", profit);
+    printf("Total Operational Cost: %.2f LKR\n", *totalCost);
+    printf("Profit: %.2f LKR\n", *profit);
     printf("Customer Charge: %.2f LKR\n", customerCharge);
-    printf("Estimated Time: %.2f hrs\n", time);
+    printf("Estimated Time: %.2f hrs\n", *time);
     printf("=====================================================\n");
+}
+
+// ---------- FILE HANDLING ----------
+void saveData(char cities[MAX_CITIES][100], int postalCodes[MAX_CITIES],int cityCount, int distance[MAX_CITIES][MAX_CITIES]) {
+    FILE *f = fopen("routes.txt", "w");
+    if (!f) { printf("Error saving data.\n"); return; }
+
+    fprintf(f, "%d\n", cityCount);
+    for (int i = 0; i < cityCount; i++)
+        fprintf(f, "%d %s\n", postalCodes[i], cities[i]);
+    for (int i = 0; i < cityCount; i++) {
+        for (int j = 0; j < cityCount; j++)
+            fprintf(f, "%d ", distance[i][j]);
+        fprintf(f, "\n");
+    }
+    fclose(f);
+}
+
+void loadData(char cities[MAX_CITIES][100], int postalCodes[MAX_CITIES],int *cityCount, int distance[MAX_CITIES][MAX_CITIES]){
+    FILE *f = fopen("routes.txt", "r");
+    if (!f) {
+        printf("No saved data found.\n");
+        return;
+    }
+
+    fscanf(f, "%d", cityCount);
+    for (int i = 0; i < *cityCount; i++)
+        fscanf(f, "%d %[^\n]", &postalCodes[i], cities[i]);
+    for (int i = 0; i < *cityCount; i++)
+        for (int j = 0; j < *cityCount; j++)
+            fscanf(f, "%d", &distance[i][j]);
+    fclose(f);
+    printf("Data loaded successfully.\n");
+}
+
+void addDeliveryRecord(int src, int dest, float weight, int vehicle, float distance, float cost, float profit, float time) {
+    if (deliveryCount >= MAX_DELIVERIES) {
+        printf("Delivery record limit reached (50 deliveries max).\n");
+        return;
+    }
+
+    srcPostal[deliveryCount] = src;
+    destPostal[deliveryCount] = dest;
+    weightArr[deliveryCount] = weight;
+    vehicleTypeArr[deliveryCount] = vehicle;
+    distanceArr[deliveryCount] = distance;
+    totalCostArr[deliveryCount] = cost;
+    profitArr[deliveryCount] = profit;
+    timeArr[deliveryCount] = time;
+    deliveryCount++;
+
+    printf("✅ Delivery record saved successfully!\n");
+}
+
+void performanceReports(void) {
+    if (deliveryCount == 0) {
+        printf("No delivery records to show reports.\n");
+        return;
+    }
+
+    float totalDistance = 0.0, totalTime = 0.0, totalRevenue = 0.0, totalProfit = 0.0;
+    float longest = distanceArr[0], shortest = distanceArr[0];
+
+    for (int i = 0; i < deliveryCount; i++) {
+        totalDistance += distanceArr[i];
+        totalTime += timeArr[i];
+        totalRevenue += totalCostArr[i];
+        totalProfit += profitArr[i];
+
+        if (distanceArr[i] > longest){
+            longest = distanceArr[i];
+        }
+        if (distanceArr[i] < shortest){
+            shortest = distanceArr[i];
+        }
+    }
+
+    printf("\n======= PERFORMANCE REPORTS =======\n");
+    printf("Total Deliveries Completed: %d\n", deliveryCount);
+    printf("Total Distance Covered: %.2f km\n", totalDistance);
+    printf("Average Delivery Time: %.2f hours\n", totalTime / deliveryCount);
+    printf("Total Revenue: %.2f LKR\n", totalRevenue);
+    printf("Total Profit: %.2f LKR\n", totalProfit);
+    printf("Shortest Route Completed: %.2f km\n", shortest);
+    printf("Longest Route Completed: %.2f km\n", longest);
+    printf("==================================\n");
+}
+void saveDeliveries(void) {
+
+    FILE *f = fopen("routes.txt", "w");
+    if (!f) {
+        perror("Error opening file for writing");
+        return;
+    }
+
+    fprintf(f, "%d\n", deliveryCount);
+    for (int i = 0; i < deliveryCount; i++) {
+        fprintf(f, "%d %d %.2f %d %.2f %.2f %.2f %.2f\n",
+                srcPostal[i], destPostal[i], weightArr[i],
+                vehicleTypeArr[i], distanceArr[i],
+                totalCostArr[i], profitArr[i], timeArr[i]);
+    }
+    fclose(f);
+}
+void loadDeliveries(void) {
+    FILE *f = fopen("routes.txt", "r");
+    if (!f) {
+        perror("Error opening file for reading...");
+        return;
+    }
+
+    fscanf(f, "%d", &deliveryCount);
+    for (int i = 0; i < deliveryCount; i++) {
+        fscanf(f, "%d %d %f %d %f %f %f %f",
+               &srcPostal[i], &destPostal[i], &weightArr[i],
+               &vehicleTypeArr[i], &distanceArr[i],
+               &totalCostArr[i], &profitArr[i], &timeArr[i]);
+    }
+    fclose(f);
 }
