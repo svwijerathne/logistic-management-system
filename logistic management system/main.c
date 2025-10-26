@@ -652,7 +652,7 @@ void performanceReports(void) {
 }
 void saveDeliveries(void) {
 
-    FILE *f = fopen("routes.txt", "w");
+    FILE *f = fopen("deliveries.txt", "w");
     if (!f) {
         perror("Error opening file for writing");
         return;
@@ -668,7 +668,7 @@ void saveDeliveries(void) {
     fclose(f);
 }
 void loadDeliveries(void) {
-    FILE *f = fopen("routes.txt", "r");
+    FILE *f = fopen("deliveries.txt", "r");
     if (!f) {
         perror("Error opening file for reading...");
         return;
